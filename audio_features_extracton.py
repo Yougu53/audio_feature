@@ -42,10 +42,14 @@ pitch = call(sound, "To Pitch", 0.0, f0min, f0max)
 pointProcess = call(sound, "To PointProcess (periodic, cc)", f0min, f0max)
 jitter = call(pointProcess, "Get jitter (local)", 0, 0, 0.0001, 0.02, 1.3)
 shimmer = call([sound, pointProcess], "Get shimmer (local)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
+# Get Harmonicity
+harmonicity = call(sound, "To Harmonicity (cc)", 0.01, f0min, 0.1, 1.0)
+hnr = call(harmonicity, "Get mean", 0, 0)
 # Print the feature values
 print("Pitch: ", pitch)
 print("Jitter: ", jitter)
 print("Shimmer: ", shimmer)
+print("Harmonicity: ", hnr)
 
 
 win_size = 5  # Window size (in seconds)
