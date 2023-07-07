@@ -34,22 +34,37 @@ className = className[1:]  # Skip CSV header
 print(className[scores.numpy().mean(axis=0).argmax()])
 
 # https://github.com/drfeinberg/PraatScripts/blob/master/Measure%20Pitch%2C%20HNR%2C%20Jitter%2C%20Shimmer%2C%20and%20Formants.ipynb
-# Extract pitch-based features: pitch, jitter and shimmer
-f0min = 75
-f0max = 300
-pitch = call(sound, "To Pitch", 0.0, f0min, f0max)
-# Get jitter and shimmer values
-pointProcess = call(sound, "To PointProcess (periodic, cc)", f0min, f0max)
-jitter = call(pointProcess, "Get jitter (local)", 0, 0, 0.0001, 0.02, 1.3)
-shimmer = call([sound, pointProcess], "Get shimmer (local)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
-# Get Harmonicity
-harmonicity = call(sound, "To Harmonicity (cc)", 0.01, f0min, 0.1, 1.0)
-hnr = call(harmonicity, "Get mean", 0, 0)
+# Extract pitch-based features: pitch, jitter, shimmer, and HNR
+# This is the function to measure voice pitch
+def measurePitch(voiceID, f0min, f0max, unit):
+    sound = parselmouth.Sound(voiceID) # read the sound
+    pitch = call(sound, "To Pitch", 0.0, f0min, f0max) #create a praat pitch object
+    meanF0 = call(pitch, "Get mean", 0, 0, unit) # get mean pitch
+    stdevF0 = call(pitch, "Get standard deviation", 0 ,0, unit) # get standard deviation
+    harmonicity = call(sound, "To Harmonicity (cc)", 0.01, 75, 0.1, 1.0)
+    hnr = call(harmonicity, "Get mean", 0, 0)
+    pointProcess = call(sound, "To PointProcess (periodic, cc)", f0min, f0max)
+    localJitter = call(pointProcess, "Get jitter (local)", 0, 0, 0.0001, 0.02, 1.3)
+    localabsoluteJitter = call(pointProcess, "Get jitter (local, absolute)", 0, 0, 0.0001, 0.02, 1.3)
+    rapJitter = call(pointProcess, "Get jitter (rap)", 0, 0, 0.0001, 0.02, 1.3)
+    ppq5Jitter = call(pointProcess, "Get jitter (ppq5)", 0, 0, 0.0001, 0.02, 1.3)
+    ddpJitter = call(pointProcess, "Get jitter (ddp)", 0, 0, 0.0001, 0.02, 1.3)
+    localShimmer =  call([sound, pointProcess], "Get shimmer (local)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
+    localdbShimmer = call([sound, pointProcess], "Get shimmer (local_dB)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
+    apq3Shimmer = call([sound, pointProcess], "Get shimmer (apq3)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
+    aqpq5Shimmer = call([sound, pointProcess], "Get shimmer (apq5)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
+    apq11Shimmer =  call([sound, pointProcess], "Get shimmer (apq11)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
+    ddaShimmer = call([sound, pointProcess], "Get shimmer (dda)", 0, 0, 0.0001, 0.02, 1.3, 1.6)
+    
+
+    return meanF0, stdevF0, hnr, localJitter, localabsoluteJitter, rapJitter, ppq5Jitter, ddpJitter, localShimmer, localdbShimmer, apq3Shimmer, aqpq5Shimmer, apq11Shimmer, ddaShimmer
+(meanF0, stdevF0, hnr, localJitter, localabsoluteJitter, rapJitter, ppq5Jitter, ddpJitter, localShimmer, localdbShimmer, apq3Shimmer, aqpq5Shimmer, apq11Shimmer, ddaShimmer) = measurePitch(sound, 75, 500, "Hertz")
 # Print the feature values
-print("Pitch: ", pitch)
-print("Jitter: ", jitter)
-print("Shimmer: ", shimmer)
+print("Pitch: ", meanF0)
+print("Jitter: ", localJitter)
+print("Shimmer: ", localShimmer)
 print("Harmonicity: ", hnr)
+
 
 
 win_size = 5  # Window size (in seconds)
