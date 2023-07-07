@@ -7,11 +7,31 @@ from pyAudioAnalysis import audioSegmentation as aS
 import parselmouth
 from parselmouth.praat import call
 import numpy as np
-
+import tensorflow as tf
+import tensorflow_hub as hub
+import soundfile as sf
+import resampy
+import csv
+import io
+model = hub.load('https://tfhub.dev/google/yamnet/1')
 # Load an audio file
 audio_path = 'path/data.wav'
 [Fs, x] = audioBasicIO.read_audio_file(audio_path)
 sound = parselmouth.Sound(audio_path)
+audio, sample_rate = sf.read(audio_path)
+
+# Resample the audio to the required sample rate of YAMNet (16 kHz)
+waveform = resampy.resample(audio, sample_rate, 16000)
+# Run the model, check the output.
+scores, embeddings, log_mel_spectrogram = model(waveform)
+scores.shape.assert_is_compatible_with([None, 521])
+embeddings.shape.assert_is_compatible_with([None, 1024])
+log_mel_spectrogram.shape.assert_is_compatible_with([None, 64])
+# Find the name of the class with the top score when mean-aggregated across frames.
+class_map_path = model.class_map_path().numpy()
+className = [display_name for (class_index, mid, display_name) in csv.reader(io.StringIO(tf.io.read_file(class_map_path).numpy().decode('utf-8')))]
+className = className[1:]  # Skip CSV header
+print(className[scores.numpy().mean(axis=0).argmax()])
 
 # https://github.com/drfeinberg/PraatScripts/blob/master/Measure%20Pitch%2C%20HNR%2C%20Jitter%2C%20Shimmer%2C%20and%20Formants.ipynb
 # Extract pitch-based features: pitch, jitter and shimmer
