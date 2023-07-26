@@ -1,7 +1,9 @@
 # audio_features_extracton.py: Extract features from wav files
-# Written by Jingjing Nie, WSU
+# Written by Jingjing Nie, Washington State University
 # Replace the folder path before run this code
-# Output: csv file in the code folder
+# Output: csv file of features
+from pyAudioAnalysis import audioBasicIO
+from pyAudioAnalysis import MidTermFeatures
 import os
 import parselmouth
 from parselmouth.praat import call
@@ -67,11 +69,30 @@ ddaShimmer_list = []
 class_list = []
 acr_list = []
 flu_list = []
+mfcc1_list = []
+mfcc2_list = []
+mfcc3_list = []
+mfcc4_list = []
+mfcc5_list = []
+mfcc6_list = []
+mfcc7_list = []
+mfcc8_list = []
+mfcc9_list = []
+mfcc10_list = []
+mfcc11_list = []
+mfcc12_list = []
+mfcc13_list = []
 
 # Go through all the wave files in the folder and measure pitch
 for wave_file in wave_files:
     sound = parselmouth.Sound(wave_file)
     audio, sample_rate = librosa.load(wave_file)
+    [Fs, x] = audioBasicIO.read_audio_file(wave_file)
+
+    win_size = 5  # Window size (in seconds)
+    step_size = 0.5  # Step size (in seconds)
+    mt, st, mt_n = MidTermFeatures.mid_feature_extraction(x, Fs, win_size * Fs, win_size * Fs, step_size * Fs, step_size * Fs)
+    
     # Resample the audio to the required sample rate of YAMNet (16 kHz)
     waveform = resampy.resample(audio, sample_rate, 16000)
     # Run the model, check the output.
@@ -84,10 +105,12 @@ for wave_file in wave_files:
     className = [display_name for (class_index, mid, display_name) in csv.reader(io.StringIO(tf.io.read_file(class_map_path).numpy().decode('utf-8')))]
     className = className[1:]  # Skip CSV header
     class_one = className[scores.numpy().mean(axis=0).argmax()]
+
     # Compute the Auto-correlation Function (ACR)
     acr = librosa.autocorrelate(audio)
     # Calculate the variance of the ACR
     acr_variance = acr.var()
+
     # Perform voice activity detection (VAD) to get unvoiced frames
     intervals = librosa.effects.split(audio, top_db=20)
     # Count the number of unvoiced frames and total frames
@@ -95,6 +118,7 @@ for wave_file in wave_files:
     total_frames = len(audio)
     # Calculate the FLU feature
     flu_feature = num_unvoiced_frames / total_frames
+
     (meanF0, stdevF0, hnr, localJitter, localabsoluteJitter, rapJitter, ppq5Jitter, ddpJitter, localShimmer, localdbShimmer, apq3Shimmer, aqpq5Shimmer, apq11Shimmer, ddaShimmer) = measurePitch(sound, 75, 500, "Hertz")
     class_list.append(class_one)
     mean_F0_list.append(meanF0) # make a mean F0 list
@@ -113,9 +137,25 @@ for wave_file in wave_files:
     ddaShimmer_list.append(ddaShimmer)
     acr_list.append(acr_variance)
     flu_list.append(flu_feature)
-df = pd.DataFrame(np.column_stack([class_list, mean_F0_list, sd_F0_list, hnr_list, localJitter_list, localabsoluteJitter_list, rapJitter_list, ppq5Jitter_list, ddpJitter_list, localShimmer_list, localdbShimmer_list, apq3Shimmer_list, aqpq5Shimmer_list, apq11Shimmer_list, ddaShimmer_list, acr_list, flu_list]),
+    #average_mfccs = sum(mfcc_lists) / len(mfcc_lists)
+    mfcc1_list.append(sum(mt[8]) / len(mt[8]))
+    mfcc2_list.append(sum(mt[9]) / len(mt[9]))
+    mfcc3_list.append(sum(mt[10]) / len(mt[10]))
+    mfcc4_list.append(sum(mt[11]) / len(mt[11]))
+    mfcc5_list.append(sum(mt[12]) / len(mt[12]))
+    mfcc6_list.append(sum(mt[13]) / len(mt[13]))
+    mfcc7_list.append(sum(mt[14]) / len(mt[14]))
+    mfcc8_list.append(sum(mt[15]) / len(mt[15]))
+    mfcc9_list.append(sum(mt[16]) / len(mt[16]))
+    mfcc10_list.append(sum(mt[17]) / len(mt[17]))
+    mfcc11_list.append(sum(mt[18]) / len(mt[18]))
+    mfcc12_list.append(sum(mt[19]) / len(mt[19]))
+    mfcc13_list.append(sum(mt[20]) / len(mt[20]))
+df = pd.DataFrame(np.column_stack([class_list, mean_F0_list, sd_F0_list, hnr_list, localJitter_list, localabsoluteJitter_list, rapJitter_list, ppq5Jitter_list, ddpJitter_list, localShimmer_list, localdbShimmer_list, apq3Shimmer_list, aqpq5Shimmer_list, apq11Shimmer_list, ddaShimmer_list, 
+                                   acr_list, flu_list, mfcc1_list, mfcc2_list, mfcc3_list, mfcc4_list, mfcc5_list,mfcc6_list,mfcc7_list, mfcc8_list, mfcc9_list, mfcc10_list, mfcc11_list, mfcc12_list,mfcc13_list]),
                                columns=['class', 'meanF0Hz', 'stdevF0Hz', 'HNR', 'localJitter', 'localabsoluteJitter', 'rapJitter', 
                                         'ppq5Jitter', 'ddpJitter', 'localShimmer', 'localdbShimmer', 'apq3Shimmer', 'apq5Shimmer', 
-                                        'apq11Shimmer', 'ddaShimmer', 'acr', 'flu'])  #add these lists to pandas in the right order
+                                        'apq11Shimmer', 'ddaShimmer', 'acr', 'flu', 'mfcc1', 'mfcc2', 'mfcc3','mfcc4', 'mfcc5', 'mfcc6','mfcc7','mfcc8','mfcc9', 'mfcc10', 'mfcc11', 'mfcc12', 'mfcc13'])  #add these lists to pandas in the right order
 # Write out the updated dataframe
-df.to_csv("processed_results.csv", index=False) # Change the csv name if the folder path is different
+df.to_csv("processed_results.csv", index=False)
+
