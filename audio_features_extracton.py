@@ -15,7 +15,7 @@ import resampy
 import csv
 import io
 import pandas as pd
-
+import speech_recognition as sr
 model = hub.load('https://tfhub.dev/google/yamnet/1')
 
 folder_path = 'path/to/your/folder' # replace the folder path
@@ -50,8 +50,23 @@ def measurePitch(voiceID, f0min, f0max, unit):
 
     return meanF0, stdevF0, hnr, localJitter, localabsoluteJitter, rapJitter, ppq5Jitter, ddpJitter, localShimmer, localdbShimmer, apq3Shimmer, aqpq5Shimmer, apq11Shimmer, ddaShimmer
 
+# https://stackoverflow.com/questions/54945100/how-to-convert-speech-to-text-in-python-input-from-audio-file
+def speech_to_text(wav_file):
+    recognizer = sr.Recognizer()
+
+    with sr.AudioFile(wav_file) as source:
+        audio = recognizer.record(source)  # Record the audio from the WAV file
+
+    try:
+        text = recognizer.recognize_google(audio)  # Use Google Web Speech API for speech-to-text conversion
+        return text
+    except sr.UnknownValueError:
+        return "Could not understand audio"
+    except sr.RequestError as e:
+        return f"Error {e}"
 
 # create lists to put the results
+texts = []
 mean_F0_list = []
 sd_F0_list = []
 hnr_list = []
@@ -120,6 +135,9 @@ for wave_file in wave_files:
     flu_feature = num_unvoiced_frames / total_frames
 
     (meanF0, stdevF0, hnr, localJitter, localabsoluteJitter, rapJitter, ppq5Jitter, ddpJitter, localShimmer, localdbShimmer, apq3Shimmer, aqpq5Shimmer, apq11Shimmer, ddaShimmer) = measurePitch(sound, 75, 500, "Hertz")
+    # speech to text
+    text = speech_to_text(wave_file)
+    texts.append(text)
     class_list.append(class_one)
     mean_F0_list.append(meanF0) # make a mean F0 list
     sd_F0_list.append(stdevF0) # make a sd F0 list
@@ -151,11 +169,10 @@ for wave_file in wave_files:
     mfcc11_list.append(sum(mt[18]) / len(mt[18]))
     mfcc12_list.append(sum(mt[19]) / len(mt[19]))
     mfcc13_list.append(sum(mt[20]) / len(mt[20]))
-df = pd.DataFrame(np.column_stack([class_list, mean_F0_list, sd_F0_list, hnr_list, localJitter_list, localabsoluteJitter_list, rapJitter_list, ppq5Jitter_list, ddpJitter_list, localShimmer_list, localdbShimmer_list, apq3Shimmer_list, aqpq5Shimmer_list, apq11Shimmer_list, ddaShimmer_list, 
+df = pd.DataFrame(np.column_stack([class_list, texts, mean_F0_list, sd_F0_list, hnr_list, localJitter_list, localabsoluteJitter_list, rapJitter_list, ppq5Jitter_list, ddpJitter_list, localShimmer_list, localdbShimmer_list, apq3Shimmer_list, aqpq5Shimmer_list, apq11Shimmer_list, ddaShimmer_list, 
                                    acr_list, flu_list, mfcc1_list, mfcc2_list, mfcc3_list, mfcc4_list, mfcc5_list,mfcc6_list,mfcc7_list, mfcc8_list, mfcc9_list, mfcc10_list, mfcc11_list, mfcc12_list,mfcc13_list]),
-                               columns=['class', 'meanF0Hz', 'stdevF0Hz', 'HNR', 'localJitter', 'localabsoluteJitter', 'rapJitter', 
+                               columns=['class', 'Text', 'meanF0Hz', 'stdevF0Hz', 'HNR', 'localJitter', 'localabsoluteJitter', 'rapJitter', 
                                         'ppq5Jitter', 'ddpJitter', 'localShimmer', 'localdbShimmer', 'apq3Shimmer', 'apq5Shimmer', 
                                         'apq11Shimmer', 'ddaShimmer', 'acr', 'flu', 'mfcc1', 'mfcc2', 'mfcc3','mfcc4', 'mfcc5', 'mfcc6','mfcc7','mfcc8','mfcc9', 'mfcc10', 'mfcc11', 'mfcc12', 'mfcc13'])  #add these lists to pandas in the right order
 # Write out the updated dataframe
 df.to_csv("processed_results.csv", index=False)
-
